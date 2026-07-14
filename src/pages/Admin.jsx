@@ -13,7 +13,7 @@ const Admin = ({ vlogs, setVlogs, content, updateContent }) => {
   const [editingVlogId, setEditingVlogId] = useState(null);
 
   const handleAdminLogin = () => {
-    if (adminUser === 'admin' && adminPass === 'grounded2025') {
+    if (adminUser === 'admin' && adminPass === 'grounded2026') {
       setIsAdmin(true);
       alert('Login successful. You can now update the website.');
     } else {
