@@ -276,7 +276,7 @@ const Admin = ({ vlogs, setVlogs, content, updateContent }) => {
                 <input type="password" placeholder="Password" value={adminPass} onChange={(e) => setAdminPass(e.target.value)} />
                 <button className="btn btn-primary" onClick={handleAdminLogin}>Login <i className="fas fa-sign-in-alt"></i></button>
               </div>
-              <div className="admin-hint">Demo access: admin / grounded2025</div>
+              <div className="admin-hint">Demo access: admin / grounded2026</div>
             </div>
 
             {isAdmin && (
