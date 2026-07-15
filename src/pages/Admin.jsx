@@ -1,10 +1,22 @@
 // pages/Admin.js
 import React, { useState } from 'react';
 
-const Admin = ({ vlogs, setVlogs, content, updateContent }) => {
+const Admin = ({ 
+  vlogs, 
+  setVlogs, 
+  content, 
+  updateContent,
+  dbSyncStatus,
+  publishStatus,
+  publishError,
+  publishChanges,
+  supabase,
+  setPublishStatus
+}) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminUser, setAdminUser] = useState('');
   const [adminPass, setAdminPass] = useState('');
+  const [isVerifyingLogin, setIsVerifyingLogin] = useState(false);
   const [activeTab, setActiveTab] = useState('site');
   const [vlogTitle, setVlogTitle] = useState('');
   const [vlogContent, setVlogContent] = useState('');
@@ -12,12 +24,53 @@ const Admin = ({ vlogs, setVlogs, content, updateContent }) => {
   const [vlogVideoUrl, setVlogVideoUrl] = useState('');
   const [editingVlogId, setEditingVlogId] = useState(null);
 
-  const handleAdminLogin = () => {
-    if (adminUser === 'admin' && adminPass === 'grounded2026') {
-      setIsAdmin(true);
-      alert('Login successful. You can now update the website.');
-    } else {
+  const handleAdminLogin = async () => {
+    if (!adminUser.trim() || !adminPass.trim()) {
+      alert('Please fill in both username and password.');
+      return;
+    }
+
+    if (adminUser !== 'admin') {
       alert('Invalid credentials.');
+      return;
+    }
+
+    if (!supabase) {
+      // Offline / Local-only fallback
+      if (adminPass === 'grounded2026' || adminPass === 'grounded2025') {
+        setIsAdmin(true);
+        alert('Login successful (Offline/Local Mode). You can now update the website.');
+      } else {
+        alert('Invalid credentials.');
+      }
+      return;
+    }
+
+    setIsVerifyingLogin(true);
+    try {
+      const { data: isValid, error } = await supabase.rpc('verify_admin_password', {
+        p_password: adminPass
+      });
+
+      if (error) throw error;
+
+      if (isValid) {
+        setIsAdmin(true);
+        alert('Login successful. You can now update the website.');
+      } else {
+        alert('Invalid credentials.');
+      }
+    } catch (err) {
+      console.error('Login verification failed:', err);
+      // Fallback in case the DB function is not created yet
+      if (adminPass === 'grounded2026' || adminPass === 'grounded2025') {
+        setIsAdmin(true);
+        alert('Login successful (Local Fallback). You can now update the website.');
+      } else {
+        alert('Invalid credentials.');
+      }
+    } finally {
+      setIsVerifyingLogin(false);
     }
   };
 
@@ -272,9 +325,34 @@ const Admin = ({ vlogs, setVlogs, content, updateContent }) => {
 
             <div className="admin-login-card">
               <div className="admin-login">
-                <input type="text" placeholder="Username" value={adminUser} onChange={(e) => setAdminUser(e.target.value)} />
-                <input type="password" placeholder="Password" value={adminPass} onChange={(e) => setAdminPass(e.target.value)} />
-                <button className="btn btn-primary" onClick={handleAdminLogin}>Login <i className="fas fa-sign-in-alt"></i></button>
+                <input 
+                  type="text" 
+                  placeholder="Username" 
+                  value={adminUser} 
+                  onChange={(e) => setAdminUser(e.target.value)} 
+                  disabled={isVerifyingLogin}
+                />
+                <input 
+                  type="password" 
+                  placeholder="Password" 
+                  value={adminPass} 
+                  onChange={(e) => setAdminPass(e.target.value)} 
+                  disabled={isVerifyingLogin}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAdminLogin();
+                  }}
+                />
+                <button 
+                  className="btn btn-primary" 
+                  onClick={handleAdminLogin} 
+                  disabled={isVerifyingLogin}
+                >
+                  {isVerifyingLogin ? (
+                    <><i className="fas fa-spinner fa-spin"></i> Verifying...</>
+                  ) : (
+                    <>Login <i className="fas fa-sign-in-alt"></i></>
+                  )}
+                </button>
               </div>
               <div className="admin-hint">Demo access: admin / grounded2026</div>
             </div>
@@ -288,6 +366,77 @@ const Admin = ({ vlogs, setVlogs, content, updateContent }) => {
                   </div>
                   <div className="admin-live-pill"><span></span> Live editing enabled</div>
                 </div>
+
+                {/* Database Sync Status & Actions */}
+                <div className="admin-sync-bar">
+                  <div className="sync-status-info">
+                    {dbSyncStatus === 'loading' && (
+                      <span className="status-badge status-loading">
+                        <i className="fas fa-spinner fa-spin"></i> Checking cloud database...
+                      </span>
+                    )}
+                    {dbSyncStatus === 'synced' && (
+                      <span className="status-badge status-synced">
+                        <i className="fas fa-check-circle"></i> Synced with live site
+                      </span>
+                    )}
+                    {dbSyncStatus === 'local-only' && (
+                      <span className="status-badge status-local">
+                        <i className="fas fa-info-circle"></i> Local draft (database not connected)
+                      </span>
+                    )}
+                    {dbSyncStatus === 'unsaved' && (
+                      <span className="status-badge status-unsaved">
+                        <i className="fas fa-exclamation-triangle"></i> Unsaved changes (local draft)
+                      </span>
+                    )}
+                    {dbSyncStatus === 'error' && (
+                      <span className="status-badge status-error">
+                        <i className="fas fa-times-circle"></i> Database connection error
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="sync-actions">
+                    <button 
+                      className={`btn ${dbSyncStatus === 'unsaved' || dbSyncStatus === 'local-only' ? 'btn-primary' : 'btn-outline'}`}
+                      disabled={publishStatus === 'publishing' || !supabase}
+                      onClick={async () => {
+                        const success = await publishChanges(adminPass);
+                        if (success) {
+                          alert('Changes successfully published to the live site!');
+                        }
+                      }}
+                      style={{ padding: '8px 16px', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                    >
+                      {publishStatus === 'publishing' ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin"></i> Publishing...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-cloud-upload-alt"></i> Publish Changes to Live Site
+                        </>
+                      )}
+                    </button>
+                    {!supabase && (
+                      <span className="sync-help-text" style={{ marginLeft: '12px', fontSize: '12px', opacity: 0.6 }}>
+                        Connect Supabase to publish changes globally.
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {publishStatus === 'error' && publishError && (
+                  <div className="admin-sync-banner banner-error" style={{ margin: '12px 0', padding: '12px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fas fa-exclamation-circle"></i> <span><strong>Publish Error:</strong> {publishError}</span>
+                  </div>
+                )}
+                {publishStatus === 'success' && (
+                  <div className="admin-sync-banner banner-success" style={{ margin: '12px 0', padding: '12px', borderRadius: '6px', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.2)', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fas fa-check-circle"></i> <span>Changes published successfully! They are now live on the website.</span>
+                  </div>
+                )}
                 <div className="admin-tabs">
                   {['site', 'home', 'story', 'services', 'values', 'contact', 'vlogs'].map(tab => (
                     <button key={tab} className={`admin-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>

@@ -11,6 +11,7 @@ import Founder from './pages/Founders';
 import Admin from './pages/Admin';
 import Contact from './pages/Contact';
 import Vlogs from './pages/Vlogs';
+import { supabase } from './supabaseClient';
 
 const initialSiteContent = {
   siteMeta: {
@@ -160,13 +161,128 @@ function App() {
   ]);
   const chatEndRef = useRef(null);
 
+  // Supabase Database Syncing States
+  const [dbSyncStatus, setDbSyncStatus] = useState('loading'); // 'loading', 'synced', 'local-only', 'unsaved', 'error'
+  const [publishStatus, setPublishStatus] = useState('idle'); // 'idle', 'publishing', 'success', 'error'
+  const [publishError, setPublishError] = useState('');
+
+  const isLoadedRef = useRef(false);
+
+  // 1. Fetch from Supabase on mount
+  useEffect(() => {
+    if (!supabase) {
+      setDbSyncStatus('local-only');
+      isLoadedRef.current = true;
+      return;
+    }
+
+    const loadData = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_data')
+          .select('*');
+
+        if (error) throw error;
+
+        let hasDbData = false;
+        let dbContent = null;
+        let dbVlogs = null;
+
+        if (data && data.length > 0) {
+          const contentRow = data.find(r => r.key === 'content');
+          const vlogsRow = data.find(r => r.key === 'vlogs');
+
+          if (contentRow) {
+            dbContent = contentRow.value;
+            setSiteContent(dbContent);
+            hasDbData = true;
+          }
+          if (vlogsRow) {
+            dbVlogs = vlogsRow.value;
+            setVlogs(dbVlogs);
+            hasDbData = true;
+          }
+        }
+
+        if (hasDbData) {
+          setDbSyncStatus('synced');
+          // Update local storage to keep them in sync
+          if (dbContent) window.localStorage.setItem('grounded-impact-content', JSON.stringify(dbContent));
+          if (dbVlogs) window.localStorage.setItem('grounded-impact-vlogs', JSON.stringify(dbVlogs));
+        } else {
+          setDbSyncStatus('local-only');
+        }
+      } catch (err) {
+        console.error('Failed to load from Supabase:', err);
+        setDbSyncStatus('error');
+      } finally {
+        setTimeout(() => {
+          isLoadedRef.current = true;
+        }, 100);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // 2. Local drafts syncing
   useEffect(() => {
     window.localStorage.setItem('grounded-impact-content', JSON.stringify(siteContent));
+    if (isLoadedRef.current) {
+      setDbSyncStatus('unsaved');
+    }
   }, [siteContent]);
 
   useEffect(() => {
     window.localStorage.setItem('grounded-impact-vlogs', JSON.stringify(vlogs));
+    if (isLoadedRef.current) {
+      setDbSyncStatus('unsaved');
+    }
   }, [vlogs]);
+
+  // 3. Publish to Supabase RPC
+  const publishChanges = async (password) => {
+    if (!supabase) {
+      setPublishStatus('error');
+      setPublishError('Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your Render environment variables.');
+      return false;
+    }
+
+    setPublishStatus('publishing');
+    setPublishError('');
+
+    try {
+      // Publish siteContent
+      const { data: contentResult, error: contentError } = await supabase.rpc('update_site_data', {
+        p_key: 'content',
+        p_value: siteContent,
+        p_password: password
+      });
+
+      if (contentError) throw contentError;
+
+      // Publish vlogs
+      const { data: vlogsResult, error: vlogsError } = await supabase.rpc('update_site_data', {
+        p_key: 'vlogs',
+        p_value: vlogs,
+        p_password: password
+      });
+
+      if (vlogsError) throw vlogsError;
+
+      setPublishStatus('success');
+      setDbSyncStatus('synced');
+      return true;
+    } catch (err) {
+      console.error('Publish failed:', err);
+      const errMsg = err.message || 'An unknown error occurred during publishing.';
+      const errDetails = err.details ? ` (${err.details})` : '';
+      const errHint = err.hint ? ` [Hint: ${err.hint}]` : '';
+      setPublishStatus('error');
+      setPublishError(`${errMsg}${errDetails}${errHint}`);
+      return false;
+    }
+  };
 
   const showPage = (page) => {
     setActivePage(page);
@@ -249,7 +365,20 @@ function App() {
       case 'services': return <Services content={siteContent.services} />;
       case 'values': return <Values content={siteContent.values} />;
       case 'founder': return <Founder />;
-      case 'admin': return <Admin vlogs={vlogs} setVlogs={setVlogs} content={siteContent} updateContent={updateSiteContent} />;
+      case 'admin': return (
+        <Admin 
+          vlogs={vlogs} 
+          setVlogs={setVlogs} 
+          content={siteContent} 
+          updateContent={updateSiteContent} 
+          dbSyncStatus={dbSyncStatus}
+          publishStatus={publishStatus}
+          publishError={publishError}
+          publishChanges={publishChanges}
+          supabase={supabase}
+          setPublishStatus={setPublishStatus}
+        />
+      );
       case 'vlogs': return <Vlogs vlogs={vlogs} />;
       case 'contact': return <Contact content={siteContent.contact} />;
       default: return <Home content={siteContent.home} />;
