@@ -244,10 +244,6 @@ const Admin = ({
               {isVerifyingLogin ? <><i className="fas fa-spinner fa-spin" /> Verifying…</> : <><i className="fas fa-sign-in-alt" /> Sign In</>}
             </button>
           </form>
-
-          <div className="cp-login-hint">
-            <i className="fas fa-info-circle" /> Demo: <strong>admin</strong> / <strong>grounded2026</strong>
-          </div>
         </div>
       </div>
     );
