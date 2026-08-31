@@ -2,17 +2,18 @@
 import React, { useState } from 'react';
 
 const NAV_ITEMS = [
-  { id: 'dashboard', icon: 'fa-th-large',       label: 'Dashboard'  },
-  { id: 'theme',     icon: 'fa-paint-brush',    label: 'Theme'      },
-  { id: 'site',      icon: 'fa-cog',            label: 'Site Meta'  },
-  { id: 'home',      icon: 'fa-home',           label: 'Home'       },
-  { id: 'story',     icon: 'fa-book-open',      label: 'Story'      },
-  { id: 'services',  icon: 'fa-briefcase',      label: 'Services'   },
-  { id: 'values',    icon: 'fa-star',           label: 'Values'     },
-  { id: 'founder',   icon: 'fa-user-tie',       label: 'Founder'    },
-  { id: 'footer',    icon: 'fa-pen',            label: 'Footer'     },
-  { id: 'contact',   icon: 'fa-envelope',       label: 'Contact'    },
-  { id: 'vlogs',     icon: 'fa-video',          label: 'Vlogs'      },
+  { id: 'dashboard',   icon: 'fa-th-large',       label: 'Dashboard'   },
+  { id: 'navigation',  icon: 'fa-compass',         label: 'Navigation'  },
+  { id: 'theme',       icon: 'fa-paint-brush',    label: 'Theme'       },
+  { id: 'site',        icon: 'fa-cog',            label: 'Site Meta'   },
+  { id: 'home',        icon: 'fa-home',           label: 'Home'        },
+  { id: 'story',       icon: 'fa-book-open',      label: 'Story'       },
+  { id: 'services',    icon: 'fa-briefcase',      label: 'Services'    },
+  { id: 'values',      icon: 'fa-star',           label: 'Values'      },
+  { id: 'founder',     icon: 'fa-user-tie',       label: 'Founder'     },
+  { id: 'footer',      icon: 'fa-pen',            label: 'Footer'      },
+  { id: 'contact',     icon: 'fa-envelope',       label: 'Contact'     },
+  { id: 'vlogs',       icon: 'fa-video',          label: 'Vlogs'       },
 ];
 
 const Admin = ({
@@ -32,6 +33,9 @@ const Admin = ({
   fontOptions,
   defaultTheme,
   saveDraft,
+  navConfig,
+  setNavConfig,
+  defaultNavConfig,
 }) => {
   // Ensure `content` is always a usable object to avoid runtime crashes
   const _defaultContent = {
@@ -835,6 +839,154 @@ const Admin = ({
               </div>
             </div>
           )}
+
+          {/* ══════════════════════════════════════ */}
+          {/*  NAVIGATION MANAGER                    */}
+          {/* ══════════════════════════════════════ */}
+          {activeTab === 'navigation' && (() => {
+            const safeNav = Array.isArray(navConfig) ? navConfig : [];
+            const enabledCount = safeNav.filter(n => n.enabled).length;
+
+            const updateNavItem = (id, changes) => {
+              setNavConfig(prev => prev.map(n => n.id === id ? { ...n, ...changes } : n));
+            };
+
+            const moveItem = (index, direction) => {
+              setNavConfig(prev => {
+                const next = [...prev];
+                const target = index + direction;
+                if (target < 0 || target >= next.length) return prev;
+                [next[index], next[target]] = [next[target], next[index]];
+                return next;
+              });
+            };
+
+            const PAGE_ICONS = {
+              home: 'fa-home', story: 'fa-book-open', services: 'fa-briefcase',
+              values: 'fa-star', vlogs: 'fa-video', founder: 'fa-user-tie',
+              contact: 'fa-envelope', admin: 'fa-shield-alt',
+            };
+
+            return (
+              <div className="cp-section">
+                <div className="cp-section-header">
+                  <h2>Navigation Manager</h2>
+                  <p>Rename, reorder, and show/hide pages in the site navbar, mobile menu, and footer — in real time.</p>
+                </div>
+
+                {/* Stats strip */}
+                <div className="cp-nav-stats-strip">
+                  <div className="cp-nav-stat">
+                    <span className="cp-nav-stat-value">{enabledCount}</span>
+                    <span className="cp-nav-stat-label">Visible Pages</span>
+                  </div>
+                  <div className="cp-nav-stat">
+                    <span className="cp-nav-stat-value">{safeNav.length - enabledCount}</span>
+                    <span className="cp-nav-stat-label">Hidden Pages</span>
+                  </div>
+                  <div className="cp-nav-stat">
+                    <span className="cp-nav-stat-value">{safeNav.length}</span>
+                    <span className="cp-nav-stat-label">Total Pages</span>
+                  </div>
+                </div>
+
+                {/* Live preview strip */}
+                <div className="cp-card">
+                  <div className="cp-card-title"><i className="fas fa-eye" /> Live Nav Preview</div>
+                  <div className="cp-nav-preview-bar">
+                    <div className="cp-nav-preview-logo">
+                      <i className="fas fa-leaf" style={{ color: siteTheme?.gold || '#C9A84C' }} />
+                      <span style={{ color: siteTheme?.gold || '#C9A84C', fontWeight: 700, fontSize: 12 }}>Grounded</span>
+                      <span style={{ color: '#fff', fontWeight: 700, fontSize: 12 }}>Impact</span>
+                    </div>
+                    <div className="cp-nav-preview-links">
+                      {safeNav.filter(n => n.enabled).map(n => (
+                        <span key={n.id} className="cp-nav-preview-link">{n.label}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nav items list */}
+                <div className="cp-card">
+                  <div className="cp-card-title"><i className="fas fa-list-ol" /> Page Configuration</div>
+                  <div className="cp-nav-manager-list">
+                    {safeNav.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className={`cp-nav-manager-row ${!item.enabled ? 'cp-nav-row-disabled' : ''}`}
+                      >
+                        {/* Drag handle / order buttons */}
+                        <div className="cp-nav-order-btns">
+                          <button
+                            className="cp-nav-order-btn"
+                            onClick={() => moveItem(index, -1)}
+                            disabled={index === 0}
+                            title="Move up"
+                          ><i className="fas fa-chevron-up" /></button>
+                          <span className="cp-nav-order-num">{index + 1}</span>
+                          <button
+                            className="cp-nav-order-btn"
+                            onClick={() => moveItem(index, 1)}
+                            disabled={index === safeNav.length - 1}
+                            title="Move down"
+                          ><i className="fas fa-chevron-down" /></button>
+                        </div>
+
+                        {/* Page identity */}
+                        <div className="cp-nav-page-id">
+                          <div className="cp-nav-page-icon">
+                            <i className={`fas ${PAGE_ICONS[item.id] || 'fa-file'}`} />
+                          </div>
+                          <span className="cp-nav-page-slug">{item.id}</span>
+                        </div>
+
+                        {/* Label editor */}
+                        <div className="cp-nav-label-field">
+                          <label>Display Label</label>
+                          <input
+                            type="text"
+                            value={item.label}
+                            onChange={e => updateNavItem(item.id, { label: e.target.value })}
+                            placeholder={item.id}
+                            maxLength={30}
+                          />
+                        </div>
+
+                        {/* Toggle */}
+                        <div className="cp-nav-toggle-wrap">
+                          <span className="cp-nav-toggle-label">
+                            {item.enabled ? 'Visible' : 'Hidden'}
+                          </span>
+                          <button
+                            className={`cp-nav-toggle ${item.enabled ? 'on' : 'off'}`}
+                            onClick={() => updateNavItem(item.id, { enabled: !item.enabled })}
+                            title={item.enabled ? 'Click to hide from nav' : 'Click to show in nav'}
+                          >
+                            <span className="cp-nav-toggle-thumb" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Reset */}
+                <div className="cp-card cp-card-reset">
+                  <div className="cp-card-title"><i className="fas fa-undo" /> Reset Navigation</div>
+                  <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 14 }}>
+                    Restore the original navigation order, labels, and visibility. This cannot be undone without saving.
+                  </p>
+                  <button
+                    className="cp-reset-btn"
+                    onClick={() => setNavConfig(defaultNavConfig ? [...defaultNavConfig] : [])}
+                  >
+                    <i className="fas fa-undo" /> Reset to Default Navigation
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ══════════════════════════════════════ */}
           {/*  VLOGS                                 */}

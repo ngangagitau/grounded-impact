@@ -81,6 +81,32 @@ const FONT_OPTIONS = [
   'Inter', 'Roboto', 'Lato', 'Outfit', 'Raleway', 'Nunito', 'Poppins', 'Montserrat', 'Playfair Display'
 ];
 
+// ── Default navigation configuration ──────────────────────────────────────
+export const DEFAULT_NAV_CONFIG = [
+  { id: 'home',     label: 'Home',     enabled: true  },
+  { id: 'story',    label: 'Story',    enabled: true  },
+  { id: 'services', label: 'Services', enabled: true  },
+  { id: 'values',   label: 'Values',   enabled: true  },
+  { id: 'vlogs',    label: 'Vlogs',    enabled: true  },
+  { id: 'founder',  label: 'Founder',  enabled: true  },
+  { id: 'contact',  label: 'Contact',  enabled: true  },
+  { id: 'admin',    label: 'Admin',    enabled: true  },
+];
+
+const getStoredNavConfig = () => {
+  if (typeof window === 'undefined') return DEFAULT_NAV_CONFIG;
+  try {
+    const saved = window.localStorage.getItem('grounded-impact-navconfig');
+    if (!saved) return DEFAULT_NAV_CONFIG;
+    const parsed = JSON.parse(saved);
+    // Merge: keep stored labels/enabled, but preserve order and add any new items
+    const storedMap = Object.fromEntries(parsed.map(n => [n.id, n]));
+    return DEFAULT_NAV_CONFIG.map(def => storedMap[def.id] ? { ...def, ...storedMap[def.id] } : def);
+  } catch {
+    return DEFAULT_NAV_CONFIG;
+  }
+};
+
 const getStoredTheme = () => {
   if (typeof window === 'undefined') return defaultTheme;
   try {
@@ -250,6 +276,7 @@ function App() {
   const [siteContent, setSiteContent] = useState(getStoredSiteContent);
   const [vlogs, setVlogs] = useState(getStoredVlogs);
   const [siteTheme, setSiteTheme] = useState(getStoredTheme);
+  const [navConfig, setNavConfig] = useState(getStoredNavConfig);
   const [chatMessages, setChatMessages] = useState([
     { sender: 'bot', text: 'Hello! I’m Grounded AI. I can help with our services, founder story, values, contact details, and vlogs.' }
   ]);
@@ -283,9 +310,10 @@ function App() {
         let dbVlogs = null;
 
         if (data && data.length > 0) {
-          const contentRow = data.find(r => r.key === 'content');
-          const vlogsRow   = data.find(r => r.key === 'vlogs');
-          const themeRow   = data.find(r => r.key === 'theme');
+          const contentRow  = data.find(r => r.key === 'content');
+          const vlogsRow    = data.find(r => r.key === 'vlogs');
+          const themeRow    = data.find(r => r.key === 'theme');
+          const navRow      = data.find(r => r.key === 'navConfig');
 
           if (contentRow) {
             dbContent = contentRow.value;
@@ -301,6 +329,13 @@ function App() {
             const dbTheme = { ...defaultTheme, ...themeRow.value };
             setSiteTheme(dbTheme);
             window.localStorage.setItem('grounded-impact-theme', JSON.stringify(dbTheme));
+            hasDbData = true;
+          }
+          if (navRow && Array.isArray(navRow.value)) {
+            const storedMap = Object.fromEntries(navRow.value.map(n => [n.id, n]));
+            const merged = DEFAULT_NAV_CONFIG.map(def => storedMap[def.id] ? { ...def, ...storedMap[def.id] } : def);
+            setNavConfig(merged);
+            window.localStorage.setItem('grounded-impact-navconfig', JSON.stringify(merged));
             hasDbData = true;
           }
         }
@@ -336,6 +371,11 @@ function App() {
     window.localStorage.setItem('grounded-impact-vlogs', JSON.stringify(vlogs));
     if (isLoadedRef.current) setDbSyncStatus('unsaved');
   }, [vlogs]);
+
+  useEffect(() => {
+    window.localStorage.setItem('grounded-impact-navconfig', JSON.stringify(navConfig));
+    if (isLoadedRef.current) setDbSyncStatus('unsaved');
+  }, [navConfig]);
 
   // 2b. Theme syncing — persist locally and apply CSS variables
   useEffect(() => {
@@ -404,6 +444,14 @@ function App() {
       });
       if (themeError) throw themeError;
 
+      // Publish navConfig
+      const { error: navError } = await supabase.rpc('update_site_data', {
+        p_key: 'navConfig',
+        p_value: navConfig,
+        p_password: password
+      });
+      if (navError) throw navError;
+
       setPublishStatus('success');
       setDbSyncStatus('synced');
       return true;
@@ -423,6 +471,7 @@ function App() {
     try {
       window.localStorage.setItem('grounded-impact-content', JSON.stringify(siteContent));
       window.localStorage.setItem('grounded-impact-vlogs', JSON.stringify(vlogs));
+      window.localStorage.setItem('grounded-impact-navconfig', JSON.stringify(navConfig));
       setDbSyncStatus('local-only');
       return true;
     } catch (err) {
@@ -530,6 +579,9 @@ function App() {
           fontOptions={FONT_OPTIONS}
           defaultTheme={defaultTheme}
           saveDraft={saveDraft}
+          navConfig={navConfig}
+          setNavConfig={setNavConfig}
+          defaultNavConfig={DEFAULT_NAV_CONFIG}
         />
       );
       case 'vlogs': return <Vlogs vlogs={vlogs} content={siteContent.vlogsPage} />;
@@ -557,28 +609,27 @@ function App() {
             </div>
           </a>
           <ul className="nav-links">
-            <li><a className={activePage === 'home' ? 'active' : ''} onClick={() => showPage('home')}>Home</a></li>
-            <li><a className={activePage === 'story' ? 'active' : ''} onClick={() => showPage('story')}>Story</a></li>
-            <li><a className={activePage === 'services' ? 'active' : ''} onClick={() => showPage('services')}>Services</a></li>
-            <li><a className={activePage === 'values' ? 'active' : ''} onClick={() => showPage('values')}>Values</a></li>
-            <li><a className={activePage === 'vlogs' ? 'active' : ''} onClick={() => showPage('vlogs')}>Vlogs</a></li>
-            <li><a className={activePage === 'founder' ? 'active' : ''} onClick={() => showPage('founder')}>Founder</a></li>
-            <li><a className={activePage === 'contact' ? 'active ' : ''} onClick={() => showPage('contact')}>Contact</a></li>
-            <li><a className={activePage === 'admin' ? 'active' : ''} onClick={() => showPage('admin')}>Admin</a></li>
+            {navConfig.filter(n => n.enabled).map(navItem => (
+              <li key={navItem.id}>
+                <a
+                  className={activePage === navItem.id ? 'active' : ''}
+                  onClick={() => showPage(navItem.id)}
+                >{navItem.label}</a>
+              </li>
+            ))}
           </ul>
           <button className={`hamburger ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(!mobileOpen)}>
             <span></span><span></span><span></span>
           </button>
         </div>
         <div className={`mobile-nav ${mobileOpen ? 'open' : ''}`}>
-          <a className={activePage === 'home' ? 'active' : ''} onClick={() => showPage('home')}>Home</a>
-          <a className={activePage === 'story' ? 'active' : ''} onClick={() => showPage('story')}>Story</a>
-          <a className={activePage === 'services' ? 'active' : ''} onClick={() => showPage('services')}>Services</a>
-          <a className={activePage === 'values' ? 'active' : ''} onClick={() => showPage('values')}>Values</a>
-          <a className={activePage === 'vlogs' ? 'active' : ''} onClick={() => showPage('vlogs')}>Vlogs</a>
-          <a className={activePage === 'founder' ? 'active' : ''} onClick={() => showPage('founder')}>Founder</a>
-          <a className={activePage === 'admin' ? 'active' : ''} onClick={() => showPage('admin')}>Admin</a>
-          <a className={activePage === 'contact' ? 'active' : ''} onClick={() => showPage('contact')}>Contact</a>
+          {navConfig.filter(n => n.enabled).map(navItem => (
+            <a
+              key={navItem.id}
+              className={activePage === navItem.id ? 'active' : ''}
+              onClick={() => showPage(navItem.id)}
+            >{navItem.label}</a>
+          ))}
         </div>
       </nav>
 
@@ -597,14 +648,11 @@ function App() {
             <div>
               <div className="footer-heading">Navigate</div>
               <ul className="footer-links">
-                <li><a onClick={() => showPage('home')}>Home</a></li>
-                <li><a onClick={() => showPage('story')}>Story</a></li>
-                <li><a onClick={() => showPage('services')}>Services</a></li>
-                <li><a onClick={() => showPage('values')}>Values</a></li>
-                <li><a onClick={() => showPage('vlogs')}>Vlogs</a></li>
-                <li><a onClick={() => showPage('founder')}>Founder</a></li>
-                <li><a onClick={() => showPage('admin')}>Admin</a></li>
-                <li><a onClick={() => showPage('contact')}>Contact</a></li>
+                {navConfig.filter(n => n.enabled).map(navItem => (
+                  <li key={navItem.id}>
+                    <a onClick={() => showPage(navItem.id)}>{navItem.label}</a>
+                  </li>
+                ))}
               </ul>
             </div>
             <div>
