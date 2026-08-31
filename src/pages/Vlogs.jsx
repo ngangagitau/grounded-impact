@@ -12,14 +12,14 @@ const getYouTubeEmbedUrl = (url) => {
   return trimmed;
 };
 
-const Vlogs = ({ vlogs = [] }) => {
+const Vlogs = ({ vlogs = [], content = {} }) => {
   return (
     <>
       <div className="page-header">
         <div className="container">
-          <div className="section-badge" style={{ marginBottom: '8px' }}>Stories & Updates</div>
-          <h2>Vlogs</h2>
-          <p>Thoughts, lessons, and updates from the Grounded Impact team.</p>
+          <div className="section-badge" style={{ marginBottom: '8px' }}>{content.badge || 'Stories & Updates'}</div>
+          <h2>{content.title || 'Vlogs'}</h2>
+          <p>{content.intro || 'Thoughts, lessons, and updates from the Grounded Impact team.'}</p>
         </div>
       </div>
 

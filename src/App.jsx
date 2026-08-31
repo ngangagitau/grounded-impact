@@ -13,6 +13,84 @@ import Contact from './pages/Contact';
 import Vlogs from './pages/Vlogs';
 import { supabase } from './supabaseClient';
 
+// --- Default Theme ---
+export const defaultTheme = {
+  navy:        '#0B2A4A',
+  navyDeep:    '#061926',
+  navyMid:     '#163a5c',
+  gold:        '#C9A84C',
+  goldLight:   '#E0C56F',
+  goldPale:    '#f9f2e4',
+  teal:        '#3A7F7A',
+  white:       '#FFFFFF',
+  offWhite:    '#f4f7fb',
+  text:        '#182333',
+  textMid:     '#425466',
+  textMuted:   '#6c7a8b',
+  fontBody:    'Inter',
+  fontDisplay: 'Playfair Display',
+  radius:      '12',
+  radiusLg:    '20',
+};
+
+const PRESET_THEMES = {
+  'Classic Navy': defaultTheme,
+  'Crimson Executive': {
+    ...defaultTheme,
+    navy:      '#3B0A0A',
+    navyDeep:  '#1f0505',
+    navyMid:   '#5a1010',
+    gold:      '#E07B39',
+    goldLight: '#F0A070',
+    goldPale:  '#fdf0e8',
+    teal:      '#8B2252',
+  },
+  'Deep Forest': {
+    ...defaultTheme,
+    navy:      '#0A2E1A',
+    navyDeep:  '#061409',
+    navyMid:   '#154229',
+    gold:      '#8DB84A',
+    goldLight: '#B0D46E',
+    goldPale:  '#f0f7e6',
+    teal:      '#2E8B57',
+  },
+  'Midnight Purple': {
+    ...defaultTheme,
+    navy:      '#1A0A3B',
+    navyDeep:  '#0d051f',
+    navyMid:   '#2d1260',
+    gold:      '#A855F7',
+    goldLight: '#C084FC',
+    goldPale:  '#f5eeff',
+    teal:      '#7C3AED',
+  },
+  'Ocean Teal': {
+    ...defaultTheme,
+    navy:      '#083344',
+    navyDeep:  '#041d28',
+    navyMid:   '#0e4b62',
+    gold:      '#06B6D4',
+    goldLight: '#22D3EE',
+    goldPale:  '#e0f7fa',
+    teal:      '#0D9488',
+  },
+};
+
+const FONT_OPTIONS = [
+  'Inter', 'Roboto', 'Lato', 'Outfit', 'Raleway', 'Nunito', 'Poppins', 'Montserrat', 'Playfair Display'
+];
+
+const getStoredTheme = () => {
+  if (typeof window === 'undefined') return defaultTheme;
+  try {
+    const saved = window.localStorage.getItem('grounded-impact-theme');
+    return saved ? { ...defaultTheme, ...JSON.parse(saved) } : defaultTheme;
+  } catch {
+    return defaultTheme;
+  }
+};
+
 const initialSiteContent = {
   siteMeta: {
     topbarLeft: 'Nairobi, Kenya · Healthcare Advisory · Speaking · Wellness',
@@ -24,7 +102,7 @@ const initialSiteContent = {
     footerBrandAccent: 'Impact',
     footerTagline: '"Superior services grounded in clinical relevance"',
     footerAbout: "Healthcare consultancy founded by Dr. Stanley Mwenda Aruyaru — bringing the clinician's voice back to the boardroom.",
-    footerCopy: '© 2025 Grounded Impact. All rights reserved.'
+    footerCopy: `© ${new Date().getFullYear()} Grounded Impact. All rights reserved.`
   },
   home: {
     hero: {
@@ -124,6 +202,21 @@ const initialSiteContent = {
     ],
     formTitle: 'Send an Enquiry',
     formIntro: 'Tell us about your organisation and what you need. We respond within 48 hours.'
+  },
+  founder: {
+    badge: 'Our Founder',
+    name: 'Dr. Stanley Mwenda Aruyaru',
+    role: 'Founder, Grounded Impact',
+    credentials: ['MBChB', 'MMed Surgery', 'FCS', 'FACS', 'FeHSM', 'PhD Candidate'],
+    bio1: 'Dr. Aruyaru started school at age 9 in rural Meru County. He became the first doctor St Cyprian High School ever produced. That origin story is the engine of Grounded Impact — proof that the resources to solve Africa\'s health challenges are already here.',
+    bio2: 'Today, he serves as Chief Medical Officer at PCEA Kikuyu Hospital, overseeing four clinical units and more than 500 staff. As Secretary General of the Surgical Society of Kenya, he drives research capacity-building across East and Central Africa.',
+    quote: '"If you are good with the tip of the scalpel, you can be good with the tip of the pen."',
+    footerNote: 'CMO — PCEA Kikuyu Hospital\nSecretary General — Surgical Society of Kenya'
+  },
+  vlogsPage: {
+    badge: 'Stories & Updates',
+    title: 'Vlogs',
+    intro: 'Thoughts, lessons, and updates from the Grounded Impact team.'
   }
 };
 
@@ -131,7 +224,7 @@ const getStoredSiteContent = () => {
   if (typeof window === 'undefined') return initialSiteContent;
   try {
     const saved = window.localStorage.getItem('grounded-impact-content');
-    return saved ? JSON.parse(saved) : initialSiteContent;
+    return saved ? { ...initialSiteContent, ...JSON.parse(saved) } : initialSiteContent;
   } catch {
     return initialSiteContent;
   }
@@ -156,6 +249,7 @@ function App() {
   const [chatInput, setChatInput] = useState('');
   const [siteContent, setSiteContent] = useState(getStoredSiteContent);
   const [vlogs, setVlogs] = useState(getStoredVlogs);
+  const [siteTheme, setSiteTheme] = useState(getStoredTheme);
   const [chatMessages, setChatMessages] = useState([
     { sender: 'bot', text: 'Hello! I’m Grounded AI. I can help with our services, founder story, values, contact details, and vlogs.' }
   ]);
@@ -190,16 +284,23 @@ function App() {
 
         if (data && data.length > 0) {
           const contentRow = data.find(r => r.key === 'content');
-          const vlogsRow = data.find(r => r.key === 'vlogs');
+          const vlogsRow   = data.find(r => r.key === 'vlogs');
+          const themeRow   = data.find(r => r.key === 'theme');
 
           if (contentRow) {
             dbContent = contentRow.value;
-            setSiteContent(dbContent);
+            setSiteContent({ ...initialSiteContent, ...dbContent });
             hasDbData = true;
           }
           if (vlogsRow) {
             dbVlogs = vlogsRow.value;
             setVlogs(dbVlogs);
+            hasDbData = true;
+          }
+          if (themeRow) {
+            const dbTheme = { ...defaultTheme, ...themeRow.value };
+            setSiteTheme(dbTheme);
+            window.localStorage.setItem('grounded-impact-theme', JSON.stringify(dbTheme));
             hasDbData = true;
           }
         }
@@ -208,7 +309,7 @@ function App() {
           setDbSyncStatus('synced');
           // Update local storage to keep them in sync
           if (dbContent) window.localStorage.setItem('grounded-impact-content', JSON.stringify(dbContent));
-          if (dbVlogs) window.localStorage.setItem('grounded-impact-vlogs', JSON.stringify(dbVlogs));
+          if (dbVlogs)   window.localStorage.setItem('grounded-impact-vlogs',   JSON.stringify(dbVlogs));
         } else {
           setDbSyncStatus('local-only');
         }
@@ -228,17 +329,44 @@ function App() {
   // 2. Local drafts syncing
   useEffect(() => {
     window.localStorage.setItem('grounded-impact-content', JSON.stringify(siteContent));
-    if (isLoadedRef.current) {
-      setDbSyncStatus('unsaved');
-    }
+    if (isLoadedRef.current) setDbSyncStatus('unsaved');
   }, [siteContent]);
 
   useEffect(() => {
     window.localStorage.setItem('grounded-impact-vlogs', JSON.stringify(vlogs));
-    if (isLoadedRef.current) {
-      setDbSyncStatus('unsaved');
-    }
+    if (isLoadedRef.current) setDbSyncStatus('unsaved');
   }, [vlogs]);
+
+  // 2b. Theme syncing — persist locally and apply CSS variables
+  useEffect(() => {
+    window.localStorage.setItem('grounded-impact-theme', JSON.stringify(siteTheme));
+    if (isLoadedRef.current) setDbSyncStatus('unsaved');
+    // Inject CSS variables into :root
+    const style = document.getElementById('dynamic-theme') || document.createElement('style');
+    style.id = 'dynamic-theme';
+    style.textContent = `
+      @import url('https://fonts.googleapis.com/css2?family=${encodeURIComponent(siteTheme.fontBody)}:wght@300;400;500;600;700;800&family=${encodeURIComponent(siteTheme.fontDisplay)}:wght@600;700;800&display=swap');
+      :root {
+        --navy:       ${siteTheme.navy};
+        --navy-deep:  ${siteTheme.navyDeep};
+        --navy-mid:   ${siteTheme.navyMid};
+        --gold:       ${siteTheme.gold};
+        --gold-light: ${siteTheme.goldLight};
+        --gold-pale:  ${siteTheme.goldPale};
+        --teal:       ${siteTheme.teal};
+        --white:      ${siteTheme.white};
+        --off-white:  ${siteTheme.offWhite};
+        --text:       ${siteTheme.text};
+        --text-mid:   ${siteTheme.textMid};
+        --text-muted: ${siteTheme.textMuted};
+        --radius:     ${siteTheme.radius}px;
+        --radius-lg:  ${siteTheme.radiusLg}px;
+        --font-body:    '${siteTheme.fontBody}', system-ui, -apple-system, sans-serif;
+        --font-display: '${siteTheme.fontDisplay}', Georgia, serif;
+      }
+    `;
+    if (!document.getElementById('dynamic-theme')) document.head.appendChild(style);
+  }, [siteTheme]);
 
   // 3. Publish to Supabase RPC
   const publishChanges = async (password) => {
@@ -253,22 +381,28 @@ function App() {
 
     try {
       // Publish siteContent
-      const { data: contentResult, error: contentError } = await supabase.rpc('update_site_data', {
+      const { error: contentError } = await supabase.rpc('update_site_data', {
         p_key: 'content',
         p_value: siteContent,
         p_password: password
       });
-
       if (contentError) throw contentError;
 
       // Publish vlogs
-      const { data: vlogsResult, error: vlogsError } = await supabase.rpc('update_site_data', {
+      const { error: vlogsError } = await supabase.rpc('update_site_data', {
         p_key: 'vlogs',
         p_value: vlogs,
         p_password: password
       });
-
       if (vlogsError) throw vlogsError;
+
+      // Publish theme
+      const { error: themeError } = await supabase.rpc('update_site_data', {
+        p_key: 'theme',
+        p_value: siteTheme,
+        p_password: password
+      });
+      if (themeError) throw themeError;
 
       setPublishStatus('success');
       setDbSyncStatus('synced');
@@ -280,6 +414,19 @@ function App() {
       const errHint = err.hint ? ` [Hint: ${err.hint}]` : '';
       setPublishStatus('error');
       setPublishError(`${errMsg}${errDetails}${errHint}`);
+      return false;
+    }
+  };
+
+  // Save draft locally (persist current state to localStorage)
+  const saveDraft = async () => {
+    try {
+      window.localStorage.setItem('grounded-impact-content', JSON.stringify(siteContent));
+      window.localStorage.setItem('grounded-impact-vlogs', JSON.stringify(vlogs));
+      setDbSyncStatus('local-only');
+      return true;
+    } catch (err) {
+      console.error('Failed to save draft locally:', err);
       return false;
     }
   };
@@ -364,7 +511,7 @@ function App() {
       case 'story': return <Story content={siteContent.story} />;
       case 'services': return <Services content={siteContent.services} />;
       case 'values': return <Values content={siteContent.values} />;
-      case 'founder': return <Founder />;
+      case 'founder': return <Founder content={siteContent.founder} />;
       case 'admin': return (
         <Admin 
           vlogs={vlogs} 
@@ -377,9 +524,15 @@ function App() {
           publishChanges={publishChanges}
           supabase={supabase}
           setPublishStatus={setPublishStatus}
+          siteTheme={siteTheme}
+          setSiteTheme={setSiteTheme}
+          presetThemes={PRESET_THEMES}
+          fontOptions={FONT_OPTIONS}
+          defaultTheme={defaultTheme}
+          saveDraft={saveDraft}
         />
       );
-      case 'vlogs': return <Vlogs vlogs={vlogs} />;
+      case 'vlogs': return <Vlogs vlogs={vlogs} content={siteContent.vlogsPage} />;
       case 'contact': return <Contact content={siteContent.contact} />;
       default: return <Home content={siteContent.home} />;
     }
