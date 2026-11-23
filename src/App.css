@@ -849,18 +849,24 @@ a { text-decoration: none; color: inherit; cursor: pointer; }
 .cp-overview-table { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 22px 24px; }
 .cp-overview-table h3 { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.75); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
 .cp-overview-table h3 i { color: var(--gold); }
+.cp-overview-hint { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.6; margin: -8px 0 16px; }
 .cp-table { display: flex; flex-direction: column; gap: 4px; }
 .cp-table-row {
-  display: grid; grid-template-columns: 1fr auto auto;
+  display: grid; grid-template-columns: 1fr auto auto auto;
   align-items: center; gap: 16px;
   padding: 12px 14px; border-radius: 10px;
   background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
   cursor: pointer; transition: 0.2s;
 }
 .cp-table-row:hover { background: rgba(201,168,76,0.07); border-color: rgba(201,168,76,0.18); }
-.cp-table-page { font-size: 14px; color: rgba(255,255,255,0.75); font-weight: 500; }
+.cp-table-row-off .cp-table-page { color: rgba(255,255,255,0.35); }
+.cp-table-page { display: flex; align-items: center; gap: 9px; font-size: 14px; color: rgba(255,255,255,0.75); font-weight: 500; }
+.cp-table-page i { color: var(--gold); width: 16px; text-align: center; font-size: 12px; }
+.cp-table-row-off .cp-table-page i { color: rgba(201,168,76,0.4); }
 .cp-table-status { font-size: 11px; color: rgba(255,255,255,0.38); display: flex; align-items: center; gap: 5px; }
+.cp-table-toggle { display: flex; align-items: center; }
 .cp-table-action { font-size: 11px; color: var(--gold); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.cp-table-row-off .cp-table-action { color: rgba(255,255,255,0.28); }
 
 /* ════════════════════════════════════════════════════════
    THEME CUSTOMISER
@@ -1117,6 +1123,7 @@ a { text-decoration: none; color: inherit; cursor: pointer; }
 }
 .cp-nav-toggle.on  { background: linear-gradient(135deg, #C9A84C, #E0C56F); }
 .cp-nav-toggle.off { background: rgba(255,255,255,0.12); }
+.cp-nav-toggle.locked { opacity: 0.45; cursor: not-allowed; }
 .cp-nav-toggle-thumb {
   position: absolute;
   top: 3px;

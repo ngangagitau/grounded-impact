@@ -93,6 +93,9 @@ export const DEFAULT_NAV_CONFIG = [
   { id: 'admin',    label: 'Admin',    enabled: true  },
 ];
 
+// Pages that must always stay enabled — the site needs a home page and admins need access.
+const LOCKED_PAGES = ['home', 'admin'];
+
 const getStoredNavConfig = () => {
   if (typeof window === 'undefined') return DEFAULT_NAV_CONFIG;
   try {
@@ -281,6 +284,19 @@ function App() {
     { sender: 'bot', text: 'Hello! I’m Grounded AI. I can help with our services, founder story, values, contact details, and vlogs.' }
   ]);
   const chatEndRef = useRef(null);
+
+  // A page is visitable only if it is enabled in the admin Navigation Manager.
+  const isPageEnabled = (id) =>
+    LOCKED_PAGES.includes(id) || (navConfig.find(n => n.id === id)?.enabled ?? true);
+
+  // Kick visitors off a page if it gets disabled while they are on it.
+  useEffect(() => {
+    if (!isPageEnabled(activePage)) {
+      setActivePage('home');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePage, navConfig]);
 
   // Supabase Database Syncing States
   const [dbSyncStatus, setDbSyncStatus] = useState('loading'); // 'loading', 'synced', 'local-only', 'unsaved', 'error'
@@ -555,6 +571,8 @@ function App() {
   }, [chatMessages]);
 
   const renderPage = () => {
+    // Disabled pages are never rendered, even if reached through leftover state.
+    if (!isPageEnabled(activePage)) return <Home content={siteContent.home} />;
     switch (activePage) {
       case 'home': return <Home content={siteContent.home} />;
       case 'story': return <Story content={siteContent.story} />;
@@ -655,15 +673,17 @@ function App() {
                 ))}
               </ul>
             </div>
-            <div>
-              <div className="footer-heading">Services</div>
-              <ul className="footer-links">
-                <li><a onClick={() => showPage('services')}>For Individuals</a></li>
-                <li><a onClick={() => showPage('services')}>For Hospitals</a></li>
-                <li><a onClick={() => showPage('services')}>For Companies</a></li>
-                <li><a onClick={() => showPage('services')}>Speaking</a></li>
-              </ul>
-            </div>
+            {isPageEnabled('services') && (
+              <div>
+                <div className="footer-heading">Services</div>
+                <ul className="footer-links">
+                  <li><a onClick={() => showPage('services')}>For Individuals</a></li>
+                  <li><a onClick={() => showPage('services')}>For Hospitals</a></li>
+                  <li><a onClick={() => showPage('services')}>For Companies</a></li>
+                  <li><a onClick={() => showPage('services')}>Speaking</a></li>
+                </ul>
+              </div>
+            )}
           </div>
           <div className="footer-bottom">
             <span className="footer-copy">{siteContent.siteMeta.footerCopy}</span>

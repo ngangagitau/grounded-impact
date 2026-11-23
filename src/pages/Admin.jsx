@@ -2,19 +2,35 @@
 import React, { useState } from 'react';
 
 const NAV_ITEMS = [
-  { id: 'dashboard',   icon: 'fa-th-large',       label: 'Dashboard'   },
-  { id: 'navigation',  icon: 'fa-compass',         label: 'Navigation'  },
-  { id: 'theme',       icon: 'fa-paint-brush',    label: 'Theme'       },
-  { id: 'site',        icon: 'fa-cog',            label: 'Site Meta'   },
-  { id: 'home',        icon: 'fa-home',           label: 'Home'        },
-  { id: 'story',       icon: 'fa-book-open',      label: 'Story'       },
-  { id: 'services',    icon: 'fa-briefcase',      label: 'Services'    },
-  { id: 'values',      icon: 'fa-star',           label: 'Values'      },
-  { id: 'founder',     icon: 'fa-user-tie',       label: 'Founder'     },
-  { id: 'footer',      icon: 'fa-pen',            label: 'Footer'      },
-  { id: 'contact',     icon: 'fa-envelope',       label: 'Contact'     },
-  { id: 'vlogs',       icon: 'fa-video',          label: 'Vlogs'       },
+  { id: 'dashboard',   icon: 'fa-th-large',       label: 'Dashboard'     },
+  { id: 'navigation',  icon: 'fa-compass',        label: 'Pages & Nav'   },
+  { id: 'theme',       icon: 'fa-paint-brush',    label: 'Theme'         },
+  { id: 'site',        icon: 'fa-cog',            label: 'Site Meta'     },
+  { id: 'home',        icon: 'fa-home',           label: 'Home'          },
+  { id: 'story',       icon: 'fa-book-open',      label: 'Story'         },
+  { id: 'services',    icon: 'fa-briefcase',      label: 'Services'      },
+  { id: 'values',      icon: 'fa-star',           label: 'Values'        },
+  { id: 'founder',     icon: 'fa-user-tie',       label: 'Founder'       },
+  { id: 'footer',      icon: 'fa-pen',            label: 'Footer'        },
+  { id: 'contact',     icon: 'fa-envelope',       label: 'Contact'       },
+  { id: 'vlogs',       icon: 'fa-video',          label: 'Vlogs'         },
 ];
+
+const PAGE_META = [
+  { id: 'home',     label: 'Home',     icon: 'fa-home'      },
+  { id: 'story',    label: 'Story',    icon: 'fa-book-open' },
+  { id: 'services', label: 'Services', icon: 'fa-briefcase' },
+  { id: 'values',   label: 'Values',   icon: 'fa-star'      },
+  { id: 'vlogs',    label: 'Vlogs',    icon: 'fa-video'     },
+  { id: 'founder',  label: 'Founder',  icon: 'fa-user-tie'  },
+  { id: 'contact',  label: 'Contact',  icon: 'fa-envelope'  },
+  { id: 'admin',    label: 'Admin',    icon: 'fa-shield-alt'},
+];
+
+const PAGE_ICONS = Object.fromEntries(PAGE_META.map(p => [p.id, p.icon]));
+
+// Home keeps the site usable and Admin is the only way back into this panel.
+const LOCKED_PAGE_IDS = ['home', 'admin'];
 
 const Admin = ({
   vlogs,
@@ -125,6 +141,13 @@ const Admin = ({
     updateContent(section, { [arrayKey]: next });
   };
   const vlogsPage = content.vlogsPage || { badge: '', title: '', intro: '' };
+
+  const togglePageEnabled = (id) => {
+    if (LOCKED_PAGE_IDS.includes(id)) return;
+    setNavConfig(prev => (Array.isArray(prev) ? prev : []).map(n => n.id === id ? { ...n, enabled: !n.enabled } : n));
+  };
+  const safeNavConfig = Array.isArray(navConfig) ? navConfig : [];
+  const sitePages = safeNavConfig.filter(n => n.id !== 'admin');
   /* ─────────────────────────────────────────────── */
   /*  Vlog helpers                                   */
   /* ─────────────────────────────────────────────── */
@@ -362,7 +385,7 @@ const Admin = ({
               {/* Stat cards */}
               <div className="cp-dashboard-grid">
                 {[
-                  { icon: 'fa-layer-group', label: 'Content Sections', value: '8',                    color: '#C9A84C' },
+                  { icon: 'fa-layer-group', label: 'Pages Enabled',    value: `${sitePages.filter(p => p.enabled).length}/${sitePages.length}`, color: '#C9A84C' },
                   { icon: 'fa-video',       label: 'Vlogs Published',  value: vlogs.length,           color: '#3A7F7A' },
                   { icon: 'fa-paint-brush', label: 'Active Theme',     value: 'Custom',               color: '#A855F7' },
                   { icon: 'fa-database',    label: 'Sync Status',      value: dbSyncStatus === 'synced' ? 'Live' : dbSyncStatus === 'unsaved' ? 'Unsaved' : 'Local', color: dbSyncStatus === 'synced' ? '#4ade80' : '#f87171' },
@@ -400,14 +423,43 @@ const Admin = ({
               {/* Sections overview */}
               <div className="cp-overview-table">
                 <h3><i className="fas fa-list" /> Pages Overview</h3>
+                <p className="cp-overview-hint">
+                  Toggle a page off to disable it. Disabled pages vanish from the navbar, mobile menu, and footer,
+                  and cannot be visited until re-enabled.
+                </p>
                 <div className="cp-table">
-                  {['Home', 'Story', 'Services', 'Values', 'Founder', 'Contact', 'Vlogs'].map(page => (
-                    <div key={page} className="cp-table-row" onClick={() => setActiveTab(page.toLowerCase())}>
-                      <span className="cp-table-page">{page}</span>
-                      <span className="cp-table-status"><i className="fas fa-circle" style={{ color: '#4ade80', fontSize: '8px' }} /> Live</span>
-                      <span className="cp-table-action"><i className="fas fa-pencil-alt" /> Edit</span>
-                    </div>
-                  ))}
+                  {sitePages.map(page => {
+                    const locked = LOCKED_PAGE_IDS.includes(page.id);
+                    return (
+                      <div
+                        key={page.id}
+                        className={`cp-table-row ${page.enabled ? '' : 'cp-table-row-off'}`}
+                        onClick={() => setActiveTab(page.id)}
+                      >
+                        <span className="cp-table-page">
+                          <i className={`fas ${PAGE_ICONS[page.id] || 'fa-file'}`} /> {page.label}
+                        </span>
+                        <span className="cp-table-status">
+                          <i className="fas fa-circle" style={{ color: page.enabled ? '#4ade80' : '#f87171', fontSize: '8px' }} />
+                          {page.enabled ? 'Live' : 'Disabled'}
+                        </span>
+                        <span className="cp-table-toggle" onClick={e => e.stopPropagation()}>
+                          <button
+                            className={`cp-nav-toggle ${page.enabled ? 'on' : 'off'} ${locked ? 'locked' : ''}`}
+                            disabled={locked}
+                            onClick={() => togglePageEnabled(page.id)}
+                            title={locked
+                              ? 'The Home page must stay enabled'
+                              : page.enabled ? 'Disable this page site-wide' : 'Enable this page'}
+                            aria-label={page.enabled ? `Disable ${page.label}` : `Enable ${page.label}`}
+                          >
+                            <span className="cp-nav-toggle-thumb" />
+                          </button>
+                        </span>
+                        <span className="cp-table-action"><i className="fas fa-pencil-alt" /> Edit</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -857,28 +909,22 @@ const Admin = ({
               });
             };
 
-            const PAGE_ICONS = {
-              home: 'fa-home', story: 'fa-book-open', services: 'fa-briefcase',
-              values: 'fa-star', vlogs: 'fa-video', founder: 'fa-user-tie',
-              contact: 'fa-envelope', admin: 'fa-shield-alt',
-            };
-
             return (
               <div className="cp-section">
                 <div className="cp-section-header">
-                  <h2>Navigation Manager</h2>
-                  <p>Rename, reorder, and show/hide pages in the site navbar, mobile menu, and footer — in real time.</p>
+                  <h2>Pages &amp; Navigation</h2>
+                  <p>Rename, reorder, enable, or disable pages. Disabled pages are removed from the navbar, mobile menu, and footer — and cannot be visited — the moment you publish.</p>
                 </div>
 
                 {/* Stats strip */}
                 <div className="cp-nav-stats-strip">
                   <div className="cp-nav-stat">
                     <span className="cp-nav-stat-value">{enabledCount}</span>
-                    <span className="cp-nav-stat-label">Visible Pages</span>
+                    <span className="cp-nav-stat-label">Enabled Pages</span>
                   </div>
                   <div className="cp-nav-stat">
                     <span className="cp-nav-stat-value">{safeNav.length - enabledCount}</span>
-                    <span className="cp-nav-stat-label">Hidden Pages</span>
+                    <span className="cp-nav-stat-label">Disabled Pages</span>
                   </div>
                   <div className="cp-nav-stat">
                     <span className="cp-nav-stat-value">{safeNav.length}</span>
@@ -952,12 +998,17 @@ const Admin = ({
                         {/* Toggle */}
                         <div className="cp-nav-toggle-wrap">
                           <span className="cp-nav-toggle-label">
-                            {item.enabled ? 'Visible' : 'Hidden'}
+                            {LOCKED_PAGE_IDS.includes(item.id)
+                              ? 'Required'
+                              : item.enabled ? 'Enabled' : 'Disabled'}
                           </span>
                           <button
-                            className={`cp-nav-toggle ${item.enabled ? 'on' : 'off'}`}
+                            className={`cp-nav-toggle ${item.enabled ? 'on' : 'off'} ${LOCKED_PAGE_IDS.includes(item.id) ? 'locked' : ''}`}
+                            disabled={LOCKED_PAGE_IDS.includes(item.id)}
                             onClick={() => updateNavItem(item.id, { enabled: !item.enabled })}
-                            title={item.enabled ? 'Click to hide from nav' : 'Click to show in nav'}
+                            title={LOCKED_PAGE_IDS.includes(item.id)
+                              ? 'This page cannot be disabled'
+                              : item.enabled ? 'Disable this page site-wide' : 'Enable this page'}
                           >
                             <span className="cp-nav-toggle-thumb" />
                           </button>
@@ -971,7 +1022,7 @@ const Admin = ({
                 <div className="cp-card cp-card-reset">
                   <div className="cp-card-title"><i className="fas fa-undo" /> Reset Navigation</div>
                   <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 14 }}>
-                    Restore the original navigation order, labels, and visibility. This cannot be undone without saving.
+                    Restore the original navigation order, labels, and enabled state. This cannot be undone without saving.
                   </p>
                   <button
                     className="cp-reset-btn"
