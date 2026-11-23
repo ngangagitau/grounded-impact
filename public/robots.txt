@@ -1,0 +1,5 @@
+
+User-agent: *
+Allow: /
+
+Sitemap: https://grounded-impact.co.ke/sitemap.xml
